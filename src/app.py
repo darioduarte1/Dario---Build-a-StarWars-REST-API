@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Characters, Planets, Spaceships
+from models import db, User, Characters, Planets, Spaceships,Favorites
 #from models import Person
 
 app = Flask(__name__)
@@ -75,7 +75,42 @@ def get_planet(planet_id):
     else:
         return jsonify ({"message": "Planet no encontrado"}), 404
 
+# Ruta para GET de todos los users en la Base de Dados
+@app.route('/users', methods=['GET'])
+def get_users():
+    users_query = User.query.all()
+    users_text = [user.serialize() for user in users_query]
+    return jsonify (users_text), 200
 
+# Ruta para GET de un character especifico en la Base de Dados
+@app.route('/users/favorites/<int:user_id>', methods=['GET'])
+def get_favorites_user(user_id):
+    favorites_query = Favorites.query.filter_by(user_fk=user_id).first()
+    if favorites_query:
+        response_body = {
+            "msg": "Favorito encontrado",
+            "result": favorites_query.serialize()
+        }
+        return jsonify (response_body), 200
+    else:
+        return jsonify ({"message": "Favorite no encontrado"}), 404
+    
+
+# Ruta para POST de un Planeta Favorito especifico en la Base de Dados
+@app.route('/favorite/planet/<int:planet_id>', methods=['POST'])
+def post_favorites_planet(planet_id):
+    request_body = request.json
+    planet = Planets.query.filter_by(id=planet_id).first()
+    if planet is None: 
+        return jsonify ({"message": "Planeta Favorito no encontrado"}), 404
+    user = User.query.filter_by(id=request_body["user_id"]).first()
+    if user is None: 
+        return jsonify ({"message": "User no encontrado"}), 404
+
+    planet_favorites = Favorites(user_fk=request_body["user_id"],planet_fk=planet_id)
+    db.session.add(planet_favorites)
+    db.session.commit()
+    return jsonify ({"message": "Favorite creado con exito"}), 200
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
