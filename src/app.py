@@ -85,11 +85,11 @@ def get_users():
 # Ruta para GET de un character especifico en la Base de Dados
 @app.route('/users/favorites/<int:user_id>', methods=['GET'])
 def get_favorites_user(user_id):
-    favorites_query = Favorites.query.filter_by(user_fk=user_id).first()
+    favorites_query = Favorites.query.filter_by(user_fk=user_id)
     if favorites_query:
         response_body = {
             "msg": "Favorito encontrado",
-            "result": favorites_query.serialize()
+            "result": [favorite.serialize() for favorite in favorites_query]
         }
         return jsonify (response_body), 200
     else:
@@ -111,6 +111,55 @@ def post_favorites_planet(planet_id):
     db.session.add(planet_favorites)
     db.session.commit()
     return jsonify ({"message": "Favorite creado con exito"}), 200
+
+# Ruta para POST de un Character Favorito en la Base de Datos
+@app.route('/favorite/people/<int:people_id>', methods=['POST'])
+def post_favorites_people(people_id):
+    request_body = request.json
+    character = Characters.query.filter_by(id=people_id).first()
+    if character is None: 
+        return jsonify({"message": "Personaje Favorito no encontrado"}), 404
+    user = User.query.filter_by(id=request_body["user_id"]).first()
+    if user is None: 
+        return jsonify({"message": "Usuario no encontrado"}), 404
+
+    character_favorite = Favorites(user_fk=request_body["user_id"], characters_fk=people_id)
+    db.session.add(character_favorite)
+    db.session.commit()
+    return jsonify({"message": "Favorito creado con éxito"}), 200
+
+# Ruta para DELETE de un Character Favorito en la Base de Datos
+@app.route('/favorite/people/<int:people_id>', methods=['DELETE'])
+def delete_favorites_people(people_id):
+    request_body = request.json
+    character = Characters.query.filter_by(id=people_id).first()
+    if character is None: 
+        return jsonify({"message": "Personaje Favorito no encontrado"}), 404
+    user = User.query.filter_by(id=request_body["user_id"]).first()
+    if user is None: 
+        return jsonify({"message": "Usuario no encontrado"}), 404
+
+    character_favorite = Favorites.query.filter_by(user_fk=request_body["user_id"],characters_fk=character.id).first()
+    db.session.delete(character_favorite)
+    db.session.commit()
+    return jsonify({"message": "Favorito eliminado con éxito"}), 200
+
+# Ruta para DELETE de un Planet Favorito en la Base de Datos
+@app.route('/favorite/planet/<int:planet_id>', methods=['DELETE'])
+def delete_favorites_planet(planet_id):
+    request_body = request.json
+    planet = Planets.query.filter_by(id=planet_id).first()
+    if planet is None: 
+        return jsonify({"message": "Planeta Favorito no encontrado"}), 404
+    user = User.query.filter_by(id=request_body["user_id"]).first()
+    if user is None: 
+        return jsonify({"message": "Usuario no encontrado"}), 404
+
+    planet_favorite = Favorites.query.filter_by(user_fk=request_body["user_id"],planet_fk=planet.id).first()
+    db.session.delete(planet_favorite)
+    db.session.commit()
+    return jsonify({"message": "Favorito eliminado con éxito"}), 200
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
